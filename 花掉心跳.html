@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>花掉一生心跳</title>
+<style>
+  :root{
+    --bg:#05060b;
+    --line:#1b2231;
+    --fg:#e6ecff;
+    --dim:#7a87a6;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #101b33 0%, #05060b 55%),
+      #05060b;
+    color:var(--fg);
+    font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100%;
+    overflow-x:hidden;
+  }
+
+  /* ---------- 全屏闪白 ---------- */
+  #flashOverlay{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:#fff;
+    opacity:0;
+    z-index:50;
+  }
+  @keyframes flashOut{
+    0%   { opacity:var(--flash-opacity, .3); }
+    100% { opacity:0; }
+  }
+
+  /* ---------- 屏幕切换 ---------- */
+  .screen{
+    display:none;
+    min-height:100vh;
+    padding:24px 16px 32px;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+  }
+  .screen.active{ display:flex; }
+
+  .cap{
+    font-size:11px;
+    letter-spacing:.32em;
+    color:var(--dim);
+    text-transform:uppercase;
+    margin-bottom:10px;
+    text-align:center;
+  }
+  .primary{
+    appearance:none;
+    font:inherit;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.08em;
+    color:#04121a;
+    background:linear-gradient(135deg,#7ef0d8,#4fc3ff);
+    border:none;
+    border-radius:14px;
+    padding:15px 34px;
+    cursor:pointer;
+    margin-top:28px;
+    box-shadow:0 0 34px rgba(90,220,255,.28);
+    transition:transform .1s, box-shadow .2s, filter .2s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .primary:hover{ filter:brightness(1.08); box-shadow:0 0 48px rgba(90,220,255,.45); }
+  .primary:active{ transform:scale(.97); }
+
+  /* ---------- 第一屏 ---------- */
+  .intro-card{ text-align:center; width:min(420px,100%); }
+  .intro-card h1{
+    font-size:clamp(24px,6vw,34px);
+    margin:0 0 26px;
+    font-weight:800;
+    letter-spacing:.04em;
+  }
+  .age-value{
+    font-size:clamp(56px,18vw,92px);
+    font-weight:800;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+    color:#7ef0d8;
+    text-shadow:0 0 40px rgba(126,240,216,.35);
+    margin-bottom:18px;
+  }
+  .age-unit{ font-size:.32em; color:var(--dim); margin-left:6px; }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:36px;
+    background:transparent;
+    cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:5px;border-radius:999px;
+    background:linear-gradient(90deg,#7ef0d8,#4fc3ff,#c084fc);
+    opacity:.55;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:24px;height:24px;border-radius:50%;
+    background:#eaf6ff;border:3px solid #4fc3ff;
+    margin-top:-10px;
+    box-shadow:0 0 18px rgba(79,195,255,.7);
+  }
+  input[type=range]::-moz-range-track{
+    height:5px;border-radius:999px;
+    background:linear-gradient(90deg,#7ef0d8,#4fc3ff,#c084fc);
+    opacity:.55;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:20px;height:20px;border-radius:50%;
+    background:#eaf6ff;border:3px solid #4fc3ff;
+    box-shadow:0 0 18px rgba(79,195,255,.7);
+  }
+  .age-hint{ font-size:12px; color:var(--dim); letter-spacing:.08em; margin-top:6px; }
+
+  /* ---------- 第二屏 ---------- */
+  .reveal-card{ text-align:center; width:min(560px,100%); }
+  .reveal-sub{
+    font-size:13.5px;
+    color:var(--dim);
+    letter-spacing:.06em;
+    margin:10px 0;
+    line-height:1.7;
+  }
+  .reveal-number{
+    font-size:clamp(28px,8vw,52px);
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    color:#7ef0d8;
+    text-shadow:0 0 44px rgba(126,240,216,.35);
+    line-height:1.15;
+    margin:14px 0 6px;
+    word-break:break-all;
+  }
+  .reveal-years{
+    font-size:14px;
+    color:#aab8d8;
+    letter-spacing:.05em;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- 第三屏 ---------- */
+  .stage{
+    width:min(820px,100%);
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  header{ text-align:center; }
+  .balance{
+    font-size:clamp(32px,8.5vw,58px);
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.01em;
+    line-height:1.05;
+    color:var(--hue-color, #5fe3d0);
+    text-shadow:0 0 28px color-mix(in srgb, var(--hue-color,#5fe3d0) 45%, transparent);
+    transition:color .4s ease;
+  }
+  .sub{
+    margin-top:8px;
+    font-size:12.5px;
+    color:var(--dim);
+    letter-spacing:.05em;
+    font-variant-numeric:tabular-nums;
+  }
+  .sub b{ color:#b9c6e6; font-weight:600; }
+
+  canvas{
+    width:100%;
+    height:150px;
+    display:block;
+    border-radius:16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)),
+      #070a11;
+    border:1px solid var(--line);
+    box-shadow:inset 0 0 60px rgba(0,0,0,.6);
+  }
+
+  .group{ margin-bottom:14px; }
+  .group-title{
+    font-size:11px;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    margin:0 0 8px 4px;
+    opacity:.8;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+    gap:9px;
+  }
+
+  button.item{
+    appearance:none;
+    font:inherit;
+    color:var(--fg);
+    background:linear-gradient(180deg, #111826, #0b0f18);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:11px 11px 10px;
+    text-align:left;
+    cursor:pointer;
+    display:grid;
+    grid-template-columns:auto 1fr;
+    grid-template-rows:auto auto;
+    column-gap:9px;
+    row-gap:1px;
+    align-items:center;
+    transition:border-color .18s, transform .08s, background .18s;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button.item:hover:not(:disabled){
+    border-color:#2c3a55;
+    background:linear-gradient(180deg,#141d2e,#0d121d);
+  }
+  button.item:active:not(:disabled){ transform:scale(.97); }
+  button.item:disabled{
+    opacity:.32;
+    cursor:not-allowed;
+    filter:grayscale(.8);
+  }
+  .icon{ grid-row:1 / span 2; font-size:19px; line-height:1; }
+  .name{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.01em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .cost{
+    font-size:11px;
+    color:var(--dim);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.02em;
+  }
+
+  /* ---------- 命运组特殊样式 ---------- */
+  .group.fate .group-title{
+    color:#c084fc;
+    text-shadow:0 0 14px rgba(192,132,252,.5);
+  }
+  .group.fate .grid{
+    grid-template-columns:repeat(auto-fit,minmax(185px,1fr));
+  }
+  button.item.big{
+    border-color:rgba(192,132,252,.28);
+    background:linear-gradient(180deg,#1a1025,#0d0815);
+  }
+  button.item.big:hover:not(:disabled){
+    border-color:rgba(192,132,252,.65);
+    background:linear-gradient(180deg,#221433,#110a1d);
+  }
+  button.item.big:not(:disabled){
+    animation:fatePulse 3.6s ease-in-out infinite;
+  }
+  @keyframes fatePulse{
+    0%,100%{ box-shadow:0 0 0 rgba(192,132,252,0); }
+    50%    { box-shadow:0 0 18px rgba(192,132,252,.14); }
+  }
+  button.item.big .icon{ font-size:24px; }
+  button.item.big .name{ font-size:14px; }
+  button.item.big .cost{ color:#d8b4fe; }
+
+  /* 余额不足时消耗量变红 */
+  .cost.danger{ color:#ff6b6b !important; }
+
+  /* ---------- 底部 ---------- */
+  .footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    min-height:34px;
+    flex-wrap:wrap;
+  }
+  .note{
+    font-size:12px;
+    color:var(--dim);
+    letter-spacing:.04em;
+  }
+  .note b{ color:#ff6b6b; font-weight:600; }
+
+  button.reset{
+    appearance:none;
+    font:inherit;
+    font-size:12px;
+    letter-spacing:.08em;
+    color:#aab8d8;
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 15px;
+    cursor:pointer;
+    transition:border-color .2s,color .2s,background .2s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button.reset:hover{ border-color:#33415e; color:#dfe7ff; background:#0d1320; }
+
+  /* ---------- 漂浮数字 ---------- */
+  .float{
+    position:fixed;
+    transform:translate(-50%,-50%);
+    font-size:14px;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    pointer-events:none;
+    z-index:99;
+    white-space:nowrap;
+    text-shadow:0 0 16px currentColor;
+    animation:rise .95s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  .float.big{
+    font-size:23px;
+    animation-duration:1.6s;
+  }
+  @keyframes rise{
+    0%  { opacity:0; transform:translate(-50%,-50%) scale(.7); }
+    15% { opacity:1; }
+    100%{ opacity:0; transform:translate(-50%,-210%) scale(1.06); }
+  }
+
+  body.dead{ filter:saturate(.35) brightness(.75); }
+</style>
+</head>
+<body>
+
+<div id="flashOverlay"></div>
+
+<!-- ========== 第一屏 ========== -->
+<section id="screen-intro" class="screen active">
+  <div class="intro-card">
+    <div class="cap">Before we begin</div>
+    <h1>你今年几岁？</h1>
+    <div class="age-value" id="ageValue">25<span class="age-unit">岁</span></div>
+    <input type="range" id="ageRange" min="5" max="77" value="25" aria-label="年龄">
+    <div class="age-hint">滑动选择 · 按平均心率与预期寿命估算</div>
+    <button class="primary" id="btnCalc">计算我的心跳</button>
+  </div>
+</section>
+
+<!-- ========== 第二屏 ========== -->
+<section id="screen-reveal" class="screen">
+  <div class="reveal-card">
+    <div class="cap">Your remaining heartbeats</div>
+    <p class="reveal-sub">按静息心率 72 次/分、预期寿命 78 岁计算</p>
+    <div class="reveal-number" id="revealNumber">0</div>
+    <div class="reveal-years" id="revealYears"></div>
+    <p class="reveal-sub" style="margin-top:22px">这是你剩余的心跳。<br>接下来，试着花掉它们。</p>
+    <button class="primary" id="btnBegin">开始花掉它们</button>
+  </div>
+</section>
+
+<!-- ========== 第三屏 ========== -->
+<section id="screen-game" class="screen">
+  <div class="stage">
+    <header>
+      <div class="cap">Remaining Heartbeats</div>
+      <div class="balance" id="balance">0</div>
+      <div class="sub" id="subInfo"></div>
+    </header>
+    <canvas id="ecg"></canvas>
+    <div id="groups"></div>
+    <div class="footer">
+      <div class="note" id="note">点一下，就少一点。</div>
+      <button class="reset" id="btnReset">重新开始</button>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============================================================
+     常量
+     ============================================================ */
+  const LIFE_EXPECTANCY = 78;
+  const BPM = 72;
+  const BEATS_PER_YEAR = BPM * 60 * 24 * 365;
+
+  const ITEMS = [
+    // 日常
+    { icon:'🍎', name:'吃个苹果',        cost: 5_000,          group:'daily' },
+    { icon:'🤧', name:'打个喷嚏',        cost: 200,            group:'daily' },
+    { icon:'😂', name:'放声大笑',        cost: 20_000,         group:'daily' },
+    { icon:'☕', name:'喝一杯咖啡',      cost: 30_000,         group:'daily' },
+    { icon:'🎬', name:'看一次电影',      cost: 15_000,         group:'daily' },
+    { icon:'📱', name:'刷一晚上视频',    cost: 40_000,         group:'daily' },
+    { icon:'🥟', name:'回家吃年夜饭',    cost: 60_000,         group:'daily' },
+    { icon:'💄', name:'精心化个全妆',    cost: 6_000,          group:'daily' },
+    // 冒险
+    { icon:'👻', name:'看一部恐怖片',    cost: 800_000,        group:'adventure' },
+    { icon:'💢', name:'生一场大气',      cost: 500_000,        group:'adventure' },
+    { icon:'🌙', name:'熬一整夜',        cost: 2_500_000,      group:'adventure' },
+    { icon:'🏃', name:'跑一次马拉松',    cost: 4_000_000,      group:'adventure' },
+    // 人生
+    { icon:'💼', name:'连续加班一周',    cost: 20_000_000,     group:'life' },
+    { icon:'💗', name:'谈一年恋爱',      cost: 50_000_000,     group:'life' },
+    { icon:'📚', name:'考研一年',        cost: 120_000_000,    group:'life' },
+    { icon:'🏫', name:'上高中三年',      cost: 300_000_000,    group:'life' },
+    // 命运（现实级大项目）
+    { icon:'✈️', name:'环游世界一年',    cost: 40_000_000,     group:'fate' },
+    { icon:'💍', name:'结一次婚',        cost: 150_000_000,    group:'fate' },
+    { icon:'🏥', name:'一场大病住院一年', cost: 200_000_000,    group:'fate' },
+    { icon:'🚀', name:'创业三年',        cost: 500_000_000,    group:'fate' },
+    { icon:'👶', name:'养一个孩子到18岁', cost: 680_000_000,   group:'fate' },
+    { icon:'🏠', name:'买房 + 30年房贷', cost: 1_440_000_000,  group:'fate' },
+  ];
+
+  const GROUPS = [
+    { id:'daily',     name:'日常', color:'#4ade80' },
+    { id:'adventure', name:'冒险', color:'#fb923c' },
+    { id:'life',      name:'人生', color:'#c084fc' },
+    { id:'fate',      name:'命运', color:'#e879f9' },
+  ];
+
+  /* ============================================================
+     状态
+     ============================================================ */
+  let age = 25;
+  let initialTotal = 0;
+  let remaining = 0;
+  let shown = 0;
+  let stress = 0;
+  let flash = 0;
+  let phase = 0;
+  let scrollRate = 0.05;
+
+  let lastShownInt = -1;
+  let lastHue = -1;
+  let lastSubTotal = -1;
+
+  /* ============================================================
+     DOM
+     ============================================================ */
+  const screens = {
+    intro:  document.getElementById('screen-intro'),
+    reveal: document.getElementById('screen-reveal'),
+    game:   document.getElementById('screen-game'),
+  };
+
+  const elAgeValue  = document.getElementById('ageValue');
+  const elAgeRange  = document.getElementById('ageRange');
+  const elRevealNum = document.getElementById('revealNumber');
+  const elRevealYrs = document.getElementById('revealYears');
+  const elBalance   = document.getElementById('balance');
+  const elSubInfo   = document.getElementById('subInfo');
+  const elNote      = document.getElementById('note');
+  const elGroups    = document.getElementById('groups');
+  const canvas      = document.getElementById('ecg');
+  const ctx         = canvas.getContext('2d');
+  const elFlash     = document.getElementById('flashOverlay');
+
+  /* ============================================================
+     工具
+     ============================================================ */
+  const fmt = n => Math.round(n).toLocaleString('en-US');
+
+  function fmtShort(n) {
+    if (n >= 1e8) return (n / 1e8).toFixed(1).replace(/\.0$/, '') + ' 亿';
+    if (n >= 1e4) return (n / 1e4).toFixed(1).replace(/\.0$/, '') + ' 万';
+    return fmt(n);
+  }
+
+  function showScreen(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  function calcTotal(age) {
+    return Math.round(Math.max(0, LIFE_EXPECTANCY - age) * BEATS_PER_YEAR);
+  }
+
+  function healthHue(health) {
+    if (health > 0.35) return 45 + ((health - 0.35) / 0.65) * 130;
+    return Math.max(0, (health / 0.35) * 45);
+  }
+
+  function triggerFlash(intensity) {
+    elFlash.style.animation = 'none';
+    elFlash.offsetHeight;
+    elFlash.style.setProperty('--flash-opacity', intensity);
+    elFlash.style.animation = 'flashOut .6s ease-out forwards';
+  }
+
+  /* ============================================================
+     心电波形 LUT
+     ============================================================ */
+  const LUT_N = 2048;
+  const LUT = new Float32Array(LUT_N);
+
+  (function buildLUT(){
+    const g = (x, mu, s) => Math.exp(-((x - mu) * (x - mu)) / (2 * s * s));
+    for (let i = 0; i < LUT_N; i++) {
+      const p = i / LUT_N;
+      LUT[i] =
+          0.10 * g(p, 0.160, 0.030)
+        - 0.09 * g(p, 0.295, 0.009)
+        + 1.00 * g(p, 0.325, 0.011)
+        - 0.26 * g(p, 0.365, 0.013)
+        + 0.27 * g(p, 0.550, 0.048);
+    }
+  })();
+
+  function sampleWave(p) {
+    p = p % 1;
+    if (p < 0) p += 1;
+    const idx = p * LUT_N;
+    const i0 = idx | 0;
+    const i1 = (i0 + 1) % LUT_N;
+    const f = idx - i0;
+    return LUT[i0] * (1 - f) + LUT[i1] * f;
+  }
+
+  /* ============================================================
+     Canvas 尺寸
+     ============================================================ */
+  function resizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w <= 0 || h <= 0) return;
+    canvas.width  = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* ============================================================
+     第一屏
+     ============================================================ */
+  elAgeRange.addEventListener('input', () => {
+    age = parseInt(elAgeRange.value, 10);
+    elAgeValue.innerHTML = age + '<span class="age-unit">岁</span>';
+  });
+
+  document.getElementById('btnCalc').addEventListener('click', async () => {
+    age = parseInt(elAgeRange.value, 10);
+    initialTotal = calcTotal(age);
+
+    elRevealNum.textContent = '0';
+    elRevealYrs.textContent = '';
+    showScreen('reveal');
+
+    await animateNumber(elRevealNum, 0, initialTotal, 1800, fmt);
+
+    const years = initialTotal / BEATS_PER_YEAR;
+    elRevealYrs.textContent = `≈ ${years.toFixed(1)} 年的心跳`;
+  });
+
+  function animateNumber(el, from, to, duration, formatter) {
+    return new Promise(resolve => {
+      const start = performance.now();
+      function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = formatter(from + (to - from) * eased);
+        if (t < 1) requestAnimationFrame(tick);
+        else resolve();
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  /* ============================================================
+     第二屏 → 第三屏
+     ============================================================ */
+  document.getElementById('btnBegin').addEventListener('click', () => {
+    remaining = initialTotal;
+    shown = initialTotal;
+    stress = 0;
+    flash = 0;
+    phase = 0;
+    scrollRate = 0.05;
+    lastShownInt = -1;
+    lastHue = -1;
+    lastSubTotal = -1;
+
+    document.body.classList.remove('dead');
+    elNote.textContent = '点一下，就少一点。';
+
+    buildItems();
+    showScreen('game');
+
+    requestAnimationFrame(() => {
+      resizeCanvas();
+      if (!loopStarted) {
+        loopStarted = true;
+        requestAnimationFrame(loop);
+      }
+    });
+  });
+
+  /* ============================================================
+     按钮生成
+     ============================================================ */
+  function buildItems() {
+    elGroups.innerHTML = '';
+
+    GROUPS.forEach(group => {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'group ' + group.id;
+
+      const title = document.createElement('div');
+      title.className = 'group-title';
+      title.textContent = group.name;
+      title.style.color = group.color;
+      groupEl.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+
+      ITEMS.filter(i => i.group === group.id).forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = 'item' + (group.id === 'fate' ? ' big' : '');
+        btn.type = 'button';
+        btn._item = item;
+        btn.innerHTML =
+          `<span class="icon">${item.icon}</span>` +
+          `<span class="name">${item.name}</span>` +
+          `<span class="cost">−${fmtShort(item.cost)}</span>`;
+        if (group.id === 'fate') {
+          btn.style.animationDelay = (Math.random() * 3.6).toFixed(2) + 's';
+        }
+        btn.addEventListener('click', () => spend(item, btn));
+        grid.appendChild(btn);
+      });
+
+      groupEl.appendChild(grid);
+      elGroups.appendChild(groupEl);
+    });
+
+    updateButtons();
+  }
+
+  function updateButtons() {
+    elGroups.querySelectorAll('button.item').forEach(btn => {
+      btn.disabled = remaining <= 0;
+      const item = btn._item;
+      const costEl = btn.querySelector('.cost');
+      if (costEl && item) {
+        costEl.classList.toggle('danger', remaining > 0 && remaining < item.cost);
+      }
+    });
+  }
+
+  /* ============================================================
+     花心跳
+     ============================================================ */
+  function spend(item, btn) {
+    if (remaining <= 0) return;
+
+    const cost = Math.min(item.cost, remaining);
+    remaining -= cost;
+
+    const isBig = item.group === 'fate';
+
+    // 应激强度：小项目轻微，命运级项目剧烈
+    stress = Math.min(4.0, stress + 0.08 + Math.sqrt(cost) / 12000);
+    flash = 1;
+
+    // 大项目数字滚得更慢，更有“肉痛”感
+    scrollRate = 0.05 + Math.min(0.35, cost / 3e9);
+
+    // 闪白
+    if (isBig) {
+      triggerFlash(0.18 + Math.min(0.22, cost / 6e9));
+    } else if (cost > 20_000_000) {
+      triggerFlash(0.10);
+    }
+
+    // 浮动数字
+    const hue = healthHue(remaining / initialTotal);
+    const r = btn.getBoundingClientRect();
+    floatText(
+      r.left + r.width / 2,
+      r.top + r.height / 2,
+      '−' + fmtShort(cost),
+      `hsl(${hue.toFixed(0)},100%,68%)`,
+      isBig
+    );
+
+    if (remaining <= 0) {
+      remaining = 0;
+      document.body.classList.add('dead');
+      elNote.innerHTML = '<b>心跳耗尽。</b>这一生，花完了。';
+      updateButtons();
+    } else {
+      updateButtons();
+    }
+  }
+
+  function floatText(x, y, text, color, isBig) {
+    const el = document.createElement('div');
+    el.className = 'float' + (isBig ? ' big' : '');
+    el.textContent = text;
+    el.style.left = (x + (Math.random() - 0.5) * 18) + 'px';
+    el.style.top  = y + 'px';
+    el.style.color = color;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), isBig ? 1700 : 1000);
+  }
+
+  /* ============================================================
+     重置
+     ============================================================ */
+  document.getElementById('btnReset').addEventListener('click', () => {
+    document.body.classList.remove('dead');
+    elNote.textContent = '点一下，就少一点。';
+    showScreen('intro');
+    elAgeValue.innerHTML = age + '<span class="age-unit">岁</span>';
+    elAgeRange.value = age;
+  });
+
+  /* ============================================================
+     每帧更新
+     ============================================================ */
+  function update(dt) {
+    const k = 1 - Math.pow(scrollRate, dt);
+    shown += (remaining - shown) * k;
+    if (Math.abs(shown - remaining) < 0.5) shown = remaining;
+
+    stress *= Math.pow(0.15, dt);
+    if (stress < 0.001) stress = 0;
+    flash *= Math.pow(0.02, dt);
+
+    const health = initialTotal > 0 ? Math.max(0, remaining / initialTotal) : 0;
+    const baseBpm = 42 + 30 * Math.pow(health, 0.8);
+    const bpm = baseBpm + stress * 52;
+
+    phase += (dt * bpm) / 60;
+    if (phase > 1e6) phase -= 1e6;
+
+    const iv = Math.round(shown);
+    if (iv !== lastShownInt) {
+      elBalance.textContent = fmt(iv);
+      lastShownInt = iv;
+    }
+
+    const hueRounded = Math.round(healthHue(health));
+    if (hueRounded !== lastHue) {
+      elBalance.style.setProperty('--hue-color', `hsl(${hueRounded},100%,66%)`);
+      lastHue = hueRounded;
+    }
+
+    if (remaining !== lastSubTotal) {
+      const spent = initialTotal - remaining;
+      const pct = initialTotal > 0 ? (spent / initialTotal * 100) : 0;
+      elSubInfo.innerHTML =
+        `已花掉 <b>${fmtShort(spent)}</b> 次　·　占 <b>${pct.toFixed(1)}%</b>`;
+      lastSubTotal = remaining;
+    }
+
+    return health;
+  }
+
+  /* ============================================================
+     绘制心电
+     ============================================================ */
+  function drawECG(health) {
+    const W = canvas.clientWidth;
+    const H = canvas.clientHeight;
+    if (W <= 0 || H <= 0) return;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const midY = H * 0.52;
+    const amp  = H * 0.36 * (0.10 + 0.90 * Math.pow(health, 0.65));
+    const cycles = 2.7;
+    const hue = healthHue(health);
+
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(W, midY);
+    ctx.strokeStyle = 'rgba(120,150,210,0.10)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const path = new Path2D();
+    const step = 2;
+    for (let x = 0; x <= W; x += step) {
+      const p = phase + (x / W) * cycles;
+      let v = sampleWave(p);
+      v += Math.sin(x * 0.09 + phase * 24) * 0.004;
+      const y = midY - v * amp;
+      if (x === 0) path.moveTo(x, y);
+      else path.lineTo(x, y);
+    }
+
+    const bright = Math.min(1, flash);
+    const l = 60 + bright * 30;
+    const hsl = `hsl(${hue.toFixed(0)},100%,${l}%)`;
+
+    ctx.save();
+    ctx.strokeStyle = `hsla(${hue.toFixed(0)},100%,62%,${0.16 + bright * 0.25})`;
+    ctx.lineWidth = 9;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowBlur = 22 + bright * 18;
+    ctx.shadowColor = hsl;
+    ctx.stroke(path);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = hsl;
+    ctx.lineWidth = 1.8 + bright * 0.8;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = hsl;
+    ctx.stroke(path);
+    ctx.restore();
+  }
+
+  /* ============================================================
+     主循环
+     ============================================================ */
+  let loopStarted = false;
+  let last = performance.now();
+
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+
+    if (screens.game.classList.contains('active')) {
+      const health = update(dt);
+      drawECG(health);
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeCanvas, 120);
+  });
+
+  showScreen('intro');
+})();
+</script>
+</body>
+</html>
